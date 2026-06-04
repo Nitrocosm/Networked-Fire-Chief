@@ -10,6 +10,25 @@
 export type Role = "HELI" | "TRUCK" | "DOZER";
 export const ROLES: readonly Role[] = ["HELI", "TRUCK", "DOZER"] as const;
 
+/**
+ * Player intentions. Defined here (not in state.ts) so movement/action logic can
+ * import it without creating a units→state→units cycle. `target` is a cell index.
+ */
+export type Command =
+  | { type: "SET_WAYPOINT"; unitId: string; target: number }
+  | { type: "CANCEL_MOVE"; unitId: string }
+  | { type: "ACT"; unitId: string };
+
+const COMMAND_RANK: Record<Command["type"], number> = { CANCEL_MOVE: 0, SET_WAYPOINT: 1, ACT: 2 };
+
+/** Canonical total order (by unitId, then type) — applied identically everywhere. */
+export function sortCommands(commands: readonly Command[]): Command[] {
+  return [...commands].sort((a, b) => {
+    if (a.unitId !== b.unitId) return a.unitId < b.unitId ? -1 : 1;
+    return COMMAND_RANK[a.type] - COMMAND_RANK[b.type];
+  });
+}
+
 export type ActionType = "EXTINGUISH" | "FIREBREAK" | "REFILL";
 
 export interface UnitAction {

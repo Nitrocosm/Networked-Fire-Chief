@@ -8,11 +8,13 @@
  */
 import { type Config, makeConfig, secondsToTicks } from "./config.ts";
 import { CanonicalWriter, hashCanonical } from "./hash/canonical.ts";
-import type { Axial } from "./hex/hex.ts";
 import { burnDurationTicks, Fire, isFlammable, Terrain } from "./fire/fire.ts";
 import { resolveWind, type Wind, type WindKeyframe } from "./wind/wind.ts";
 import { deriveSeed, RNG_STREAMS } from "./rng/rng.ts";
 import { cloneUnit, type Unit } from "./units/units.ts";
+
+// Command lives in the units module; re-exported here for convenience.
+export type { Command } from "./units/units.ts";
 
 export type RunStatus = "RUNNING" | "ENDED";
 
@@ -47,12 +49,6 @@ export interface WorldState {
 
   config: Config;
 }
-
-/** Player intentions. Unit commands are applied starting in Phase 2. */
-export type Command =
-  | { type: "SET_WAYPOINT"; unitId: string; target: Axial }
-  | { type: "CANCEL_MOVE"; unitId: string }
-  | { type: "ACT"; unitId: string };
 
 export interface InitOptions {
   seed: number;

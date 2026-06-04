@@ -14,10 +14,11 @@ import { lossValue, Fire, stepFire, type FireBuffers } from "./fire/fire.ts";
 import { getNeighborDirTable } from "./hex/hex.ts";
 import { Rng } from "./rng/rng.ts";
 import { resolveWind } from "./wind/wind.ts";
-import { cloneUnit } from "./units/units.ts";
-import type { Command, RunStatus, WorldState } from "./state.ts";
+import { cloneUnit, sortCommands, type Command } from "./units/units.ts";
+import { applyMovementCommands, resolveMovement } from "./units/movement.ts";
+import type { RunStatus, WorldState } from "./state.ts";
 
-export function tick(state: WorldState, _commands: readonly Command[] = []): WorldState {
+export function tick(state: WorldState, commands: readonly Command[] = []): WorldState {
   // Once a round has ended it is frozen — further ticks are no-ops.
   if (state.status === "ENDED") return state;
 
@@ -28,9 +29,14 @@ export function tick(state: WorldState, _commands: readonly Command[] = []): Wor
   // while the input WorldState stays untouched (purity).
   const units = state.units.map(cloneUnit);
 
-  // 1. Apply commands — wired in the Phase 2 movement/actions commit.
-  // 2. Resolve unit movement — Phase 2.
-  // 3. Resolve unit actions (extinguish/firebreak/refill) — Phase 2.
+  // 1. Apply commands (canonical order) — movement here; ACT/actions next commit.
+  const sorted = sortCommands(commands);
+  applyMovementCommands(units, width, height, sorted);
+
+  // 2. Resolve unit movement (no-stacking).
+  resolveMovement(units, config);
+
+  // 3. Resolve unit actions (extinguish/firebreak/refill) — next commit.
 
   // 4. Spread fire + advance burn timers + process burnouts (deduct score).
   const neighbors = getNeighborDirTable(width, height);
