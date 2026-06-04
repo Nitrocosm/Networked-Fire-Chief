@@ -3,3 +3,4 @@
 export * from "./roles.ts";
 export * from "./scenario-schema.ts";
 export * from "./snapshot.ts";
+export * from "./messages.ts";
