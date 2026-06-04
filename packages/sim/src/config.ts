@@ -11,6 +11,8 @@
 
 export type LossToggle = "both" | "assets_only";
 export type OutbreakSource = "scripted" | "seeded";
+/** Faithful = clustered on one edge (like the experiment); or scattered (spec §16). */
+export type SourceDistribution = "clustered" | "scattered";
 
 export interface ResourceCost {
   /** Fraction of a full tank (0..1) consumed per action. */
@@ -87,8 +89,14 @@ export interface Config {
   ANIMAL_CLUSTER_MAX: number;
   FOREST_CLUSTER_MIN: number;
   FOREST_CLUSTER_MAX: number;
+  FOREST_CLUSTER_COUNT: number;
+  HOUSE_CLUSTER_COUNT: number;
+  ANIMAL_CLUSTER_COUNT: number;
   WATER_SOURCE_COUNT: number;
   FUEL_SOURCE_COUNT: number;
+  SOURCE_DISTRIBUTION: SourceDistribution;
+  /** Seeded outbreak density: warnings per 5 minutes (spec §9: ~5–6). */
+  OUTBREAK_DENSITY_PER_5MIN: number;
 
   // ── Optional mechanics (off by default; engine support only) ───────────
   ROAD_ENABLED: boolean;
@@ -148,8 +156,13 @@ export const DEFAULT_CONFIG: Config = {
   ANIMAL_CLUSTER_MAX: 15,
   FOREST_CLUSTER_MIN: 10,
   FOREST_CLUSTER_MAX: 25,
+  FOREST_CLUSTER_COUNT: 6,
+  HOUSE_CLUSTER_COUNT: 3,
+  ANIMAL_CLUSTER_COUNT: 3,
   WATER_SOURCE_COUNT: 4,
   FUEL_SOURCE_COUNT: 4,
+  SOURCE_DISTRIBUTION: "scattered",
+  OUTBREAK_DENSITY_PER_5MIN: 5.5,
 
   ROAD_ENABLED: false,
   TERRAIN_ACCESS_RULES_ENABLED: false,
