@@ -54,6 +54,7 @@ export interface UnitView {
 interface SnapshotBase {
   tick: number;
   endTick: number;
+  ticksPerSec: number;
   width: number;
   height: number;
   score: number;
@@ -106,6 +107,7 @@ export function toSnapshot(state: WorldState): Snapshot {
   return {
     tick: state.tick,
     endTick: state.endTick,
+    ticksPerSec: state.config.TICKS_PER_SEC,
     width: state.width,
     height: state.height,
     score: state.score,
