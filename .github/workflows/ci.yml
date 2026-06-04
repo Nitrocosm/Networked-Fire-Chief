@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Governance gates — any failure blocks the merge.
+      - name: Typecheck (sim has no DOM lib)
+        run: pnpm run typecheck
+      - name: Lint + architectural boundaries
+        run: pnpm run lint
+      - name: Unit + determinism tests
+        run: pnpm run test
+      - name: Install Chromium for cross-engine check
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Cross-engine determinism (Node ↔ Chromium golden hash)
+        run: pnpm run test:crossengine

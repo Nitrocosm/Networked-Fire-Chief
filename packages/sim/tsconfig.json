@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // GUARDRAIL: no "DOM" lib and no node "types" — the deterministic core
+    // cannot reference window/document/requestAnimationFrame/process/Buffer.
+    // Any such reference is a COMPILE error, not a runtime surprise.
+    "lib": ["ES2022"],
+    "types": []
+  },
+  "include": ["src", "test"]
+}
