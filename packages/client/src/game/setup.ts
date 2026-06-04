@@ -1,83 +1,11 @@
 /**
- * Builds a single-player game: a seeded procedural map with seeded outbreaks,
- * shifting wind, and 6 units (2 of each role). One operator drives them all.
- * Fires arrive via telegraphed WARNINGS (not instant ignition), so a round opens
- * calm and the first fire is signposted.
+ * Single-player game = the shared @fire/sim buildGame. The same builder runs on
+ * the authoritative server, so single-player and multiplayer share one world.
  */
-import {
-  cellIndex,
-  createStateFromScenario,
-  makeUnit,
-  type Scenario,
-  type ScenarioEvent,
-  sortEvents,
-  Terrain,
-  type Unit,
-  type WorldState,
-} from "@fire/sim";
+import { buildGame, type GameOptions, type WorldState } from "@fire/sim";
 
-export interface GameOptions {
-  seed?: number;
-  mapSeed?: number;
-  size?: number;
-  roundLengthSec?: number;
-  windSpeed?: number;
-  outbreakDensity?: number;
-}
+export type { GameOptions };
 
 export function createSinglePlayerGame(opts: GameOptions = {}): WorldState {
-  const W = opts.size ?? 40;
-  const seed = opts.seed ?? 1337;
-  const mapSeed = opts.mapSeed ?? 4242;
-  const windSpeed = opts.windSpeed ?? 0.4;
-
-  const scenario: Scenario = {
-    seed,
-    mapSeed,
-    config: {
-      GRID_W: W,
-      GRID_H: W,
-      ROUND_LENGTH_SEC: opts.roundLengthSec ?? 300,
-      OUTBREAK_SOURCE: "seeded",
-      OUTBREAK_DENSITY_PER_5MIN: opts.outbreakDensity ?? 5,
-    },
-    windKeyframes: [
-      { atTick: 0, dirX: 1, dirY: 0, speed: windSpeed },
-      { atTick: 2400, dirX: 0, dirY: 1, speed: windSpeed + 0.15 },
-      { atTick: 4200, dirX: -1, dirY: 0.3, speed: windSpeed },
-    ],
-    events: [], // seeded → outbreak schedule generated from `seed`
-  };
-
-  const state = createStateFromScenario(scenario);
-
-  const k = Math.floor(W / 2);
-  const starts: Array<[number, number]> = [
-    [2, 2], [W - 3, 2], [2, W - 3], [W - 3, W - 3], [k, 2], [2, k],
-  ];
-  const units: Unit[] = [
-    makeUnit({ id: "heli-1", role: "HELI", operatorId: "p1", cell: cellIndex(starts[0]![0], starts[0]![1], W) }),
-    makeUnit({ id: "heli-2", role: "HELI", operatorId: "p1", cell: cellIndex(starts[1]![0], starts[1]![1], W) }),
-    makeUnit({ id: "truck-1", role: "TRUCK", operatorId: "p2", cell: cellIndex(starts[2]![0], starts[2]![1], W) }),
-    makeUnit({ id: "truck-2", role: "TRUCK", operatorId: "p2", cell: cellIndex(starts[3]![0], starts[3]![1], W) }),
-    makeUnit({ id: "dozer-1", role: "DOZER", operatorId: "p3", cell: cellIndex(starts[4]![0], starts[4]![1], W) }),
-    makeUnit({ id: "dozer-2", role: "DOZER", operatorId: "p3", cell: cellIndex(starts[5]![0], starts[5]![1], W) }),
-  ];
-  state.units.push(...units);
-
-  // A couple of early telegraphed warnings so action starts soon — but signposted,
-  // layered onto the seeded schedule.
-  const grass: number[] = [];
-  for (let i = 0; i < state.terrain.length; i++) if (state.terrain[i] === Terrain.GRASSLAND) grass.push(i);
-  if (grass.length > 0) {
-    const earlies: ScenarioEvent[] = [60, 240].map((atTick, idx) => ({
-      atTick,
-      type: "WARNING",
-      id: `early-${idx}`,
-      center: grass[(idx * 1009 + 17) % grass.length]!,
-    }));
-    state.events = sortEvents([...state.events, ...earlies]);
-  }
-
-  return state;
+  return buildGame(opts);
 }

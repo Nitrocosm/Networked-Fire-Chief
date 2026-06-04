@@ -7,7 +7,7 @@
  * (Per-tick full snapshots are JSON for debuggability; delta-encoding is a Phase 6
  * optimization.)
  */
-import type { Command, Role } from "@fire/sim";
+import type { Command, GameOptions, Role } from "@fire/sim";
 import type { ClientView, UnitView, WarningView, WindView } from "./snapshot.ts";
 
 export interface WireSnapshot {
@@ -62,15 +62,39 @@ export function wireToClientView(w: WireSnapshot): ClientView {
   };
 }
 
+// ── Lobby ───────────────────────────────────────────────────────────────────
+/** Public per-player info broadcast to a room (no private token). */
+export interface PlayerInfo {
+  id: string;
+  name: string;
+  role: Role | null;
+  isHost: boolean;
+  connected: boolean;
+}
+
+export interface LobbyState {
+  code: string;
+  started: boolean;
+  players: PlayerInfo[];
+}
+
 // ── Messages ──────────────────────────────────────────────────────────────
 export type ClientMsg =
-  | { type: "JOIN"; role: Role }
-  | { type: "COMMAND"; command: Command };
+  | { type: "CREATE_ROOM"; name?: string; options?: GameOptions }
+  | { type: "JOIN_ROOM"; code: string; name?: string; token?: string }
+  | { type: "CLAIM_ROLE"; role: Role | null }
+  | { type: "START" }
+  | { type: "COMMAND"; command: Command }
+  | { type: "LEAVE" };
 
 export type ServerMsg =
-  | { type: "WELCOME"; role: Role; unitIds: string[]; ticksPerSec: number }
+  | { type: "JOINED"; code: string; token: string; isHost: boolean }
+  | { type: "ROOM_STATE"; lobby: LobbyState }
+  | { type: "WELCOME"; role: Role | null; unitIds: string[]; ticksPerSec: number }
   | { type: "SNAPSHOT"; snap: WireSnapshot }
   | { type: "ERROR"; message: string };
+
+const ROLES_SET = new Set(["HELI", "TRUCK", "DOZER"]);
 
 export function encodeClientMsg(m: ClientMsg): string {
   return JSON.stringify(m);
@@ -79,9 +103,21 @@ export function encodeClientMsg(m: ClientMsg): string {
 export function decodeClientMsg(raw: string): ClientMsg | null {
   try {
     const m = JSON.parse(raw) as ClientMsg;
-    if (m.type === "JOIN" && (m.role === "HELI" || m.role === "TRUCK" || m.role === "DOZER")) return m;
-    if (m.type === "COMMAND" && m.command && typeof m.command.type === "string") return m;
-    return null;
+    switch (m.type) {
+      case "CREATE_ROOM":
+        return m;
+      case "JOIN_ROOM":
+        return typeof m.code === "string" && m.code.length > 0 ? m : null;
+      case "CLAIM_ROLE":
+        return m.role === null || ROLES_SET.has(m.role) ? m : null;
+      case "START":
+      case "LEAVE":
+        return m;
+      case "COMMAND":
+        return m.command && typeof m.command.type === "string" && typeof m.command.unitId === "string" ? m : null;
+      default:
+        return null;
+    }
   } catch {
     return null;
   }

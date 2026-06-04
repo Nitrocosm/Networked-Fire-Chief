@@ -59,14 +59,16 @@ describe("role filtering at the WIRE level", () => {
 });
 
 describe("client message decode", () => {
-  it("round-trips JOIN and COMMAND", () => {
-    expect(decodeClientMsg(encodeClientMsg({ type: "JOIN", role: "TRUCK" }))).toEqual({ type: "JOIN", role: "TRUCK" });
+  it("round-trips lobby + command messages", () => {
+    expect(decodeClientMsg(encodeClientMsg({ type: "JOIN_ROOM", code: "FIRE-1" }))).toEqual({ type: "JOIN_ROOM", code: "FIRE-1" });
+    expect(decodeClientMsg(encodeClientMsg({ type: "CLAIM_ROLE", role: "TRUCK" }))).toEqual({ type: "CLAIM_ROLE", role: "TRUCK" });
     const cmd = encodeClientMsg({ type: "COMMAND", command: { type: "ACT", unitId: "t1" } });
     expect(decodeClientMsg(cmd)).toEqual({ type: "COMMAND", command: { type: "ACT", unitId: "t1" } });
   });
 
   it("rejects malformed input", () => {
     expect(decodeClientMsg("not json")).toBeNull();
-    expect(decodeClientMsg(JSON.stringify({ type: "JOIN", role: "WIZARD" }))).toBeNull();
+    expect(decodeClientMsg(JSON.stringify({ type: "CLAIM_ROLE", role: "WIZARD" }))).toBeNull();
+    expect(decodeClientMsg(JSON.stringify({ type: "JOIN_ROOM" }))).toBeNull();
   });
 });

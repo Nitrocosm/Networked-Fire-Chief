@@ -1,8 +1,8 @@
-// Authoritative multiplayer host (Phase 5). Runs the SAME @fire/sim core as the
-// single-player local transport; differs only in transport + command routing.
-import { ROLES } from "@fire/protocol";
-import { DEFAULT_CONFIG } from "@fire/sim";
+// Authoritative multiplayer host. Runs the SAME @fire/sim core as single-player;
+// differs only in transport (ws) + room-code lobby.
+import { startServer } from "./transport-ws.ts";
 
-export function describeServer(): string {
-  return `@fire/server placeholder — roles=${ROLES.join(",")} grid=${DEFAULT_CONFIG.GRID_W}x${DEFAULT_CONFIG.GRID_H}`;
-}
+const port = Number(process.env.PORT ?? 8787);
+startServer(port);
+// eslint-disable-next-line no-console
+console.log(`Fire Control server listening on ws://localhost:${port}`);
