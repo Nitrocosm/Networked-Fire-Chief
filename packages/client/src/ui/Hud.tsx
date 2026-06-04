@@ -48,21 +48,23 @@ export function Hud() {
 
   return (
     <div className="hud">
-      {/* Top bar */}
-      <div className="hud-bar">
-        <div className="stat"><label>SCORE</label><span className="score">{snap.score.toLocaleString()}</span></div>
-        <div className="stat"><label>TIME</label><span className={remaining < 30 ? "time low" : "time"}>{fmtClock(remaining)}</span></div>
-        {snap.status === "ENDED" && <div className="ended">ROUND OVER</div>}
+      {/* Top-left: score/time + controls (clear of the map's top-center) */}
+      <div className="panel-tl">
+        <div className="card score-card">
+          <div className="stat"><label>SCORE</label><span className="score">{snap.score.toLocaleString()}</span></div>
+          <div className="stat"><label>TIME</label><span className={remaining < 30 ? "time low" : "time"}>{fmtClock(remaining)}</span></div>
+        </div>
+        {snap.status === "ENDED" && <div className="card ended">ROUND OVER</div>}
+        <div className="modes">
+          <button className={mode === "CASUAL" ? "on" : ""} onClick={() => setMode("CASUAL")}>Casual</button>
+          <button className={mode === "CHALLENGE" ? "on" : ""} onClick={() => setMode("CHALLENGE")}>Challenge</button>
+        </div>
         <div className="roles">
           {ROLES.map((r) => (
             <button key={r} className={r === activeRole ? "on" : ""} onClick={() => setActiveRole(r)}>
               {ROLE_LABEL[r]}
             </button>
           ))}
-        </div>
-        <div className="modes">
-          <button className={mode === "CASUAL" ? "on" : ""} onClick={() => setMode("CASUAL")}>Casual</button>
-          <button className={mode === "CHALLENGE" ? "on" : ""} onClick={() => setMode("CHALLENGE")}>Challenge</button>
         </div>
       </div>
 
@@ -93,16 +95,16 @@ export function Hud() {
         )}
       </div>
 
-      {/* Bottom-left: hover info */}
+      {/* Bottom-right: hover info */}
       {hoverCell !== null && (
-        <div className="panel-bl card">
+        <div className="panel-br card">
           <div>({hoverCell % snap.width}, {Math.floor(hoverCell / snap.width)})</div>
           <div className="muted">{TERRAIN_NAME[snap.terrain[hoverCell]!] ?? "?"}</div>
         </div>
       )}
 
-      {/* Bottom: roster + selected */}
-      <div className="panel-bottom">
+      {/* Bottom-left: roster + selected */}
+      <div className="panel-bl">
         <div className="roster">
           {roster.map((u) => (
             <button key={u.id} className={u.id === selectedUnitId ? "unit on" : "unit"} onClick={() => selectUnit(u.id, u.role)}>

@@ -44,28 +44,27 @@ body,
   pointer-events: none;
 }
 
-.hud-bar {
-  pointer-events: auto;
+/* Top-left control column — sits below the Menu button, hugging the left edge. */
+.panel-tl {
   position: absolute;
-  top: 12px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: 60px;
+  left: 14px;
   display: flex;
-  align-items: center;
-  gap: 22px;
-  padding: 10px 18px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  backdrop-filter: blur(8px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.score-card {
+  display: flex;
+  gap: 20px;
 }
 
 .stat {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  min-width: 88px;
+  align-items: flex-start;
+  min-width: 64px;
 }
 
 .stat label {
@@ -218,21 +217,23 @@ body,
   color: var(--muted);
 }
 
+/* Bottom-left: roster + selected, hugging the left edge. */
 .panel-bl {
   position: absolute;
-  bottom: 12px;
-  left: 12px;
-  font-variant-numeric: tabular-nums;
+  bottom: 14px;
+  left: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
 }
 
-.panel-bottom {
+/* Bottom-right: hover readout. */
+.panel-br {
   position: absolute;
-  bottom: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 10px;
-  align-items: flex-end;
+  bottom: 14px;
+  right: 14px;
+  font-variant-numeric: tabular-nums;
 }
 
 .roster {
