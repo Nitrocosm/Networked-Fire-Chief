@@ -65,7 +65,7 @@ describe("fire lifecycle", () => {
     expect(s.score).toBe(baseline);
 
     // Run until it burns out; exactly one vegetation penalty applied.
-    s = run(s, 400);
+    s = run(s, burnDurationTicks(Terrain.GRASSLAND, s.config) + 30);
     expect(s.fire[idx]).toBe(Fire.BURNT_OUT);
     expect(s.score).toBe(baseline - 20);
   });
@@ -78,7 +78,7 @@ describe("fire lifecycle", () => {
     let s = makeState(terrain, { ASSET_LOSS_PER_CELL: 500 });
     const baseline = s.score;
     igniteCell(s, idx);
-    s = run(s, 500);
+    s = run(s, burnDurationTicks(Terrain.HOUSE, s.config) + 30);
     expect(s.fire[idx]).toBe(Fire.BURNT_OUT);
     expect(s.score).toBe(baseline - 500);
   });
@@ -92,7 +92,7 @@ describe("fire lifecycle", () => {
     terrain[nb] = Terrain.GRASSLAND;
     let s = makeState(terrain, { FIRE_P0: 100 });
     igniteCell(s, nb); // burn out the neighbor first
-    s = run(s, 400);
+    s = run(s, burnDurationTicks(Terrain.GRASSLAND, s.config) + 30);
     expect(s.fire[nb]).toBe(Fire.BURNT_OUT);
     // Now light the center and run; the burnt-out neighbor must stay burnt out.
     igniteCell(s, center);

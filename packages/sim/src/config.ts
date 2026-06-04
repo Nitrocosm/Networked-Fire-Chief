@@ -115,18 +115,18 @@ export const DEFAULT_CONFIG: Config = {
   VEGETATION_LOSS_PER_CELL: 20, // set 0 for "protect assets only"
   LOSS_TOGGLE: "both",
 
-  FIRE_P0: 0.0025, // per-neighbor per-tick catch prob. Tuned for FEEL: the front
-  // advances ~1 cell per ~10s crosswind (faster downwind), while still catching
-  // ~4 of 6 over a (now longer) grass burn duration — see spread-stats gate.
+  FIRE_P0: 0.0012, // per-neighbor per-tick catch prob. Tuned for a deliberate,
+  // ~10–15s-per-ring spread (the product formula means a front cell with 2 burning
+  // neighbors catches in ~10s). Fire is intentionally patchy/containable.
   FUEL_FACTOR_GRASSLAND: 1.3, // tune-later — catches readily
   FUEL_FACTOR_FOREST: 0.7, // tune-later — slower per tick, longer burn
   FUEL_FACTOR_HOUSE: 1.0, // tune-later — explicit (no "vegetation they sit in")
   FUEL_FACTOR_ANIMALS: 1.0, // tune-later
 
-  GRASS_BURN_DURATION_SEC: 24, // longer so fire sustains at the slower spread rate
-  FOREST_BURN_DURATION_SEC: 45, // longer than grass
-  ASSET_BURN_DURATION_SEC: 30,
-  IGNITING_DURATION_SEC: 1.5, // tune-later — shorter = higher skill ceiling
+  GRASS_BURN_DURATION_SEC: 28, // long enough that fire still sustains at the slow rate
+  FOREST_BURN_DURATION_SEC: 50, // longer than grass
+  ASSET_BURN_DURATION_SEC: 38,
+  IGNITING_DURATION_SEC: 3, // visible telegraph + reaction window; IGNITING doesn't spread
   REIGNITE_IMMUNITY_SEC: 2, // tune-later
 
   WIND_DOWNWIND_MULT: 3.5, // up to ~3–4 at full speed
