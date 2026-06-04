@@ -2,7 +2,18 @@
  * Builds a single-player game: a seeded procedural map with seeded outbreaks,
  * shifting wind, and 6 units (2 of each role). One operator drives them all.
  */
-import { cellIndex, createStateFromScenario, makeUnit, type Scenario, type Unit, type WorldState } from "@fire/sim";
+import {
+  cellIndex,
+  createStateFromScenario,
+  igniteCell,
+  makeUnit,
+  type Scenario,
+  type ScenarioEvent,
+  sortEvents,
+  Terrain,
+  type Unit,
+  type WorldState,
+} from "@fire/sim";
 
 export interface GameOptions {
   seed?: number;
@@ -48,6 +59,22 @@ export function createSinglePlayerGame(opts: GameOptions = {}): WorldState {
     makeUnit({ id: "dozer-2", role: "DOZER", operatorId: "p3", cell: cellIndex(starts[5]![0], starts[5]![1], W) }),
   ];
   state.units.push(...units);
+
+  // Liveliness: a couple of starter fires + early warnings layered onto the
+  // seeded outbreak schedule, so a practice round has action from the start.
+  const grass: number[] = [];
+  for (let i = 0; i < state.terrain.length; i++) if (state.terrain[i] === Terrain.GRASSLAND) grass.push(i);
+  if (grass.length > 0) {
+    igniteCell(state, grass[Math.floor(grass.length * 0.45)]!);
+    igniteCell(state, grass[Math.floor(grass.length * 0.6)]!);
+    const earlies: ScenarioEvent[] = [40, 120, 220].map((atTick, k) => ({
+      atTick,
+      type: "WARNING",
+      id: `early-${k}`,
+      center: grass[(k * 977 + 13) % grass.length]!,
+    }));
+    state.events = sortEvents([...state.events, ...earlies]);
+  }
 
   return state;
 }
