@@ -10,6 +10,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@fire/sim": "workspace:*"
+    "@fire/sim": "workspace:*",
+    "zod": "^3.23.0"
   }
 }

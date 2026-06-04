@@ -13,5 +13,6 @@ export * from "./units/actions.ts";
 export * from "./scenario/scenario.ts";
 export * from "./scenario/events.ts";
 export * from "./scenario/procgen.ts";
+export * from "./scenario/loader.ts";
 export * from "./state.ts";
 export * from "./tick.ts";

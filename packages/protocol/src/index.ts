@@ -10,6 +10,8 @@
 export { ROLES, type Role } from "@fire/sim";
 import type { Role } from "@fire/sim";
 
+export * from "./scenario-schema.ts";
+
 /** Per-role visibility matrix (DECISIONS / spec §13). Drives snapshot filtering. */
 export const ROLE_VISIBILITY: Record<Role, { wind: boolean; warnings: boolean }> = {
   HELI: { wind: true, warnings: false }, // blind to warnings
