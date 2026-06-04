@@ -12,6 +12,20 @@ export function cellCenter(col: number, row: number, size: number): { x: number;
   return { x, y };
 }
 
+/** Interpolated world position of a unit moving cell→nextCell (shared by render + input). */
+export function unitWorldPos(
+  cell: number,
+  nextCell: number | null,
+  stepProgress: number,
+  width: number,
+  size: number,
+): { x: number; y: number } {
+  const base = cellCenter(cell % width, Math.floor(cell / width), size);
+  if (nextCell === null) return base;
+  const next = cellCenter(nextCell % width, Math.floor(nextCell / width), size);
+  return { x: base.x + (next.x - base.x) * stepProgress, y: base.y + (next.y - base.y) * stepProgress };
+}
+
 /** Unit corner offsets for a pointy-top hex (vertices at top/bottom). */
 export const HEX_CORNERS: ReadonlyArray<{ dx: number; dy: number }> = Array.from({ length: 6 }, (_, i) => {
   const a = (Math.PI / 180) * (30 + 60 * i);

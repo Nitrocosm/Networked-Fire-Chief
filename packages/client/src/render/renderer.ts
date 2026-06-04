@@ -10,7 +10,7 @@
 import { Terrain } from "@fire/sim";
 import type { ClientView, UnitView } from "@fire/protocol";
 import { Camera } from "./camera.ts";
-import { cellCenter, hexPath } from "./hexLayout.ts";
+import { cellCenter, hexPath, unitWorldPos } from "./hexLayout.ts";
 import { fireColor, ROLE_COLOR, TERRAIN_COLOR } from "./colors.ts";
 
 const HEX_SIZE = 1; // world units; the camera handles screen scale
@@ -21,11 +21,8 @@ export interface DrawOpts {
   hoverCell: number | null;
 }
 
-function unitWorldPos(u: UnitView, width: number): { x: number; y: number } {
-  const base = cellCenter(u.cell % width, Math.floor(u.cell / width), HEX_SIZE);
-  if (u.nextCell === null) return base;
-  const next = cellCenter(u.nextCell % width, Math.floor(u.nextCell / width), HEX_SIZE);
-  return { x: base.x + (next.x - base.x) * u.stepProgress, y: base.y + (next.y - base.y) * u.stepProgress };
+function posOf(u: UnitView, width: number): { x: number; y: number } {
+  return unitWorldPos(u.cell, u.nextCell, u.stepProgress, width, HEX_SIZE);
 }
 
 export class CanvasRenderer {
@@ -105,7 +102,7 @@ export class CanvasRenderer {
     for (const u of view.units) {
       if (u.destination === null) continue;
       const d = cellCenter(u.destination % width, (u.destination / width) | 0, HEX_SIZE);
-      const from = unitWorldPos(u, width);
+      const from = posOf(u, width);
       ctx.beginPath();
       ctx.moveTo(from.x, from.y);
       ctx.lineTo(d.x, d.y);
@@ -123,9 +120,9 @@ export class CanvasRenderer {
 
     // ── Units (interpolated) ───────────────────────────────────────────────
     for (const u of view.units) {
-      const cur = unitWorldPos(u, width);
+      const cur = posOf(u, width);
       const p = prevById.get(u.id);
-      const pos = p ? { x: lerp(unitWorldPos(p, width).x, cur.x, alpha), y: lerp(unitWorldPos(p, width).y, cur.y, alpha) } : cur;
+      const pos = p ? { x: lerp(posOf(p, width).x, cur.x, alpha), y: lerp(posOf(p, width).y, cur.y, alpha) } : cur;
       this.drawUnit(u, pos.x, pos.y, opts.selectedUnitId === u.id);
     }
   }
