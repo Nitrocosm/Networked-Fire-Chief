@@ -23,6 +23,8 @@ import {
   startActions,
   stepActions,
 } from "./units/actions.ts";
+import { applyEvents } from "./scenario/events.ts";
+import { cloneWarnings } from "./scenario/scenario.ts";
 import type { RunStatus, WorldState } from "./state.ts";
 
 export function tick(state: WorldState, commands: readonly Command[] = []): WorldState {
@@ -73,7 +75,12 @@ export function tick(state: WorldState, commands: readonly Command[] = []): Worl
   // 5. Update wind for the new tick (recomputed from keyframes — no drift).
   const newWind = resolveWind(state.windKeyframes, newTick);
 
-  // 6. Warnings / outbreaks — Phase 3.
+  // 6. Outbreaks & warnings: apply scripted events + resolve developed fires
+  //    (writes the post-spread buffers; scatter draws follow the spread draws).
+  const warnings = cloneWarnings(state.warnings);
+  const nextEventIndex = applyEvents(
+    newTick, state.events, state.nextEventIndex, warnings, terrain, next, width, height, config, rng,
+  );
 
   // 7. End condition. On the final tick, charge any still-in-progress fire once
   //    (DECISIONS §1.8): a cell burning at the buzzer is lost, but an extinguished
@@ -99,6 +106,8 @@ export function tick(state: WorldState, commands: readonly Command[] = []): Worl
     suppressed,
     sourceLevel,
     units,
+    warnings,
+    nextEventIndex,
     wind: newWind,
     score: newScore,
     simRngState: rng.state,

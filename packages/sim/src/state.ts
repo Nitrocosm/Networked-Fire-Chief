@@ -12,6 +12,7 @@ import { burnDurationTicks, Fire, isFlammable, Terrain } from "./fire/fire.ts";
 import { resolveWind, type Wind, type WindKeyframe } from "./wind/wind.ts";
 import { deriveSeed, RNG_STREAMS } from "./rng/rng.ts";
 import { cloneUnit, type Unit } from "./units/units.ts";
+import { cloneWarnings, sortEvents, type ScenarioEvent, type Warning } from "./scenario/scenario.ts";
 
 // Command lives in the units module; re-exported here for convenience.
 export type { Command } from "./units/units.ts";
@@ -41,6 +42,11 @@ export interface WorldState {
   /** Fixed creation order; commands are applied in canonical unitId order. */
   units: Unit[];
 
+  /** Scripted outbreak schedule (sorted by atTick) + cursor + active warnings. */
+  events: ScenarioEvent[];
+  nextEventIndex: number;
+  warnings: Warning[];
+
   score: number;
   simRngState: number;
 
@@ -57,6 +63,7 @@ export interface InitOptions {
   terrain?: Uint8Array;
   windKeyframes?: WindKeyframe[];
   units?: Unit[];
+  events?: ScenarioEvent[];
 }
 
 export function createInitialState(opts: InitOptions): WorldState {
@@ -91,6 +98,9 @@ export function createInitialState(opts: InitOptions): WorldState {
     windKeyframes,
     wind: resolveWind(windKeyframes, 0),
     units: opts.units ?? [],
+    events: sortEvents(opts.events ?? []),
+    nextEventIndex: 0,
+    warnings: [],
     score: config.BASELINE_SCORE,
     simRngState: deriveSeed(opts.seed, RNG_STREAMS.SIM),
     endTick: secondsToTicks(config.ROUND_LENGTH_SEC, config.TICKS_PER_SEC),
@@ -121,6 +131,8 @@ export function cloneWorld(s: WorldState): WorldState {
     windKeyframes: s.windKeyframes.map((k) => ({ ...k })),
     wind: { ...s.wind },
     units: s.units.map(cloneUnit),
+    events: s.events, // static input — never mutated by tick
+    warnings: cloneWarnings(s.warnings),
     config: { ...s.config },
   };
 }
@@ -159,6 +171,11 @@ export function writeWorld(w: CanonicalWriter, s: WorldState): void {
   w.f64(s.wind.forecastDirX).f64(s.wind.forecastDirY).f64(s.wind.forecastSpeed).i32(s.wind.forecastEtaTick);
   w.u32(s.units.length);
   for (let i = 0; i < s.units.length; i++) writeUnit(w, s.units[i]!);
+  w.u32(s.nextEventIndex).u32(s.warnings.length);
+  for (let i = 0; i < s.warnings.length; i++) {
+    const wn = s.warnings[i]!;
+    w.str(wn.id).i32(wn.center).i32(wn.igniteAtTick).i32(wn.radius);
+  }
   w.f64(s.score).i32(s.simRngState).u32(s.endTick).u32(STATUS_CODE[s.status]);
 }
 
