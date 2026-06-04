@@ -32,8 +32,8 @@ describe("spread statistics gate", () => {
         terrain,
       });
       igniteCell(s, center);
-      // Run past the grass burn duration so the source fully burns out.
-      for (let t = 0; t < 100; t++) s = tick(s);
+      // Run past the grass burn duration (24s ≈ 360 ticks) so the source fully burns out.
+      for (let t = 0; t < 380; t++) s = tick(s);
       if (s.fire[neighbor] !== Fire.UNBURNT) catches++;
     }
 

@@ -115,17 +115,17 @@ export const DEFAULT_CONFIG: Config = {
   VEGETATION_LOSS_PER_CELL: 20, // set 0 for "protect assets only"
   LOSS_TOGGLE: "both",
 
-  FIRE_P0: 0.0118, // tuned from 0.08 starting point so a neighbor catches ~0.75 over
-  // a grass burn duration → ~4.5 of 6 catch (spread-stats gate). Re-tuned in Phase 6
-  // alongside burn durations.
+  FIRE_P0: 0.0025, // per-neighbor per-tick catch prob. Tuned for FEEL: the front
+  // advances ~1 cell per ~10s crosswind (faster downwind), while still catching
+  // ~4 of 6 over a (now longer) grass burn duration — see spread-stats gate.
   FUEL_FACTOR_GRASSLAND: 1.3, // tune-later — catches readily
   FUEL_FACTOR_FOREST: 0.7, // tune-later — slower per tick, longer burn
   FUEL_FACTOR_HOUSE: 1.0, // tune-later — explicit (no "vegetation they sit in")
   FUEL_FACTOR_ANIMALS: 1.0, // tune-later
 
-  GRASS_BURN_DURATION_SEC: 6, // tune-later — shorter
-  FOREST_BURN_DURATION_SEC: 14, // tune-later — longer
-  ASSET_BURN_DURATION_SEC: 10, // tune-later
+  GRASS_BURN_DURATION_SEC: 24, // longer so fire sustains at the slower spread rate
+  FOREST_BURN_DURATION_SEC: 45, // longer than grass
+  ASSET_BURN_DURATION_SEC: 30,
   IGNITING_DURATION_SEC: 1.5, // tune-later — shorter = higher skill ceiling
   REIGNITE_IMMUNITY_SEC: 2, // tune-later
 
