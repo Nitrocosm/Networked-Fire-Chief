@@ -5,9 +5,10 @@
 // once the sim `Snapshot` type exists. The filtered-send type contract (a full
 // Snapshot is NOT assignable to RoleSnapshot) is enforced here.
 
-export type Role = "HELI" | "TRUCK" | "DOZER";
-
-export const ROLES: readonly Role[] = ["HELI", "TRUCK", "DOZER"] as const;
+// Role is a core sim concept (units have roles); re-exported here for callers
+// that only depend on @fire/protocol.
+export { ROLES, type Role } from "@fire/sim";
+import type { Role } from "@fire/sim";
 
 /** Per-role visibility matrix (DECISIONS / spec §13). Drives snapshot filtering. */
 export const ROLE_VISIBILITY: Record<Role, { wind: boolean; warnings: boolean }> = {

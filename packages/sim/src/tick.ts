@@ -14,6 +14,7 @@ import { lossValue, Fire, stepFire, type FireBuffers } from "./fire/fire.ts";
 import { getNeighborDirTable } from "./hex/hex.ts";
 import { Rng } from "./rng/rng.ts";
 import { resolveWind } from "./wind/wind.ts";
+import { cloneUnit } from "./units/units.ts";
 import type { Command, RunStatus, WorldState } from "./state.ts";
 
 export function tick(state: WorldState, _commands: readonly Command[] = []): WorldState {
@@ -23,7 +24,11 @@ export function tick(state: WorldState, _commands: readonly Command[] = []): Wor
   const { width, height, config } = state;
   const cellCount = width * height;
 
-  // 1. Apply commands — unit commands land in Phase 2 (no units yet).
+  // Units are deep-copied up front so the rest of the tick can mutate freely
+  // while the input WorldState stays untouched (purity).
+  const units = state.units.map(cloneUnit);
+
+  // 1. Apply commands — wired in the Phase 2 movement/actions commit.
   // 2. Resolve unit movement — Phase 2.
   // 3. Resolve unit actions (extinguish/firebreak/refill) — Phase 2.
 
@@ -66,6 +71,7 @@ export function tick(state: WorldState, _commands: readonly Command[] = []): Wor
     fire: next.fire,
     burnTimer: next.burnTimer,
     immune: next.immune,
+    units,
     wind: newWind,
     score: newScore,
     simRngState: rng.state,

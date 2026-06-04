@@ -12,6 +12,7 @@ import type { Axial } from "./hex/hex.ts";
 import { burnDurationTicks, Fire, isFlammable, Terrain } from "./fire/fire.ts";
 import { resolveWind, type Wind, type WindKeyframe } from "./wind/wind.ts";
 import { deriveSeed, RNG_STREAMS } from "./rng/rng.ts";
+import { cloneUnit, type Unit } from "./units/units.ts";
 
 export type RunStatus = "RUNNING" | "ENDED";
 
@@ -35,6 +36,9 @@ export interface WorldState {
   windKeyframes: WindKeyframe[];
   wind: Wind;
 
+  /** Fixed creation order; commands are applied in canonical unitId order. */
+  units: Unit[];
+
   score: number;
   simRngState: number;
 
@@ -56,6 +60,7 @@ export interface InitOptions {
   /** Length width*height; defaults to all GRASSLAND. */
   terrain?: Uint8Array;
   windKeyframes?: WindKeyframe[];
+  units?: Unit[];
 }
 
 export function createInitialState(opts: InitOptions): WorldState {
@@ -89,6 +94,7 @@ export function createInitialState(opts: InitOptions): WorldState {
     sourceLevel,
     windKeyframes,
     wind: resolveWind(windKeyframes, 0),
+    units: opts.units ?? [],
     score: config.BASELINE_SCORE,
     simRngState: deriveSeed(opts.seed, RNG_STREAMS.SIM),
     endTick: secondsToTicks(config.ROUND_LENGTH_SEC, config.TICKS_PER_SEC),
@@ -118,11 +124,30 @@ export function cloneWorld(s: WorldState): WorldState {
     sourceLevel: s.sourceLevel.slice(),
     windKeyframes: s.windKeyframes.map((k) => ({ ...k })),
     wind: { ...s.wind },
+    units: s.units.map(cloneUnit),
     config: { ...s.config },
   };
 }
 
 const STATUS_CODE: Record<RunStatus, number> = { RUNNING: 0, ENDED: 1 };
+const ROLE_CODE: Record<Unit["role"], number> = { HELI: 0, TRUCK: 1, DOZER: 2 };
+const ACTION_CODE = { EXTINGUISH: 0, FIREBREAK: 1, REFILL: 2 } as const;
+
+function writeUnit(w: CanonicalWriter, u: Unit): void {
+  w.str(u.id).u32(ROLE_CODE[u.role]).str(u.operatorId);
+  w.i32(u.cell).f64(u.stepProgress).f64(u.water).f64(u.fuel);
+  w.u32(u.path.length);
+  for (let i = 0; i < u.path.length; i++) w.i32(u.path[i]!);
+  if (u.action === null) {
+    w.bool(false);
+  } else {
+    w.bool(true)
+      .u32(ACTION_CODE[u.action.type])
+      .i32(u.action.target)
+      .i32(u.action.ticksRemaining)
+      .i32(u.action.totalTicks);
+  }
+}
 
 /** Appends the full dynamic+static state to a canonical byte stream (fixed order). */
 export function writeWorld(w: CanonicalWriter, s: WorldState): void {
@@ -136,6 +161,8 @@ export function writeWorld(w: CanonicalWriter, s: WorldState): void {
   for (let i = 0; i < s.sourceLevel.length; i++) w.f64(s.sourceLevel[i]!);
   w.f64(s.wind.dirX).f64(s.wind.dirY).f64(s.wind.speed);
   w.f64(s.wind.forecastDirX).f64(s.wind.forecastDirY).f64(s.wind.forecastSpeed).i32(s.wind.forecastEtaTick);
+  w.u32(s.units.length);
+  for (let i = 0; i < s.units.length; i++) writeUnit(w, s.units[i]!);
   w.f64(s.score).i32(s.simRngState).u32(s.endTick).u32(STATUS_CODE[s.status]);
 }
 
