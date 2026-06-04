@@ -17,6 +17,7 @@ const scenarioPath = path.resolve(goldenDir, "scenario.ts");
 test("sim golden hashes are bit-identical in Chromium and Node", async ({ page }) => {
   const golden1 = JSON.parse(readFileSync(path.join(goldenDir, "phase1.json"), "utf8")) as Record<string, string>;
   const golden2 = JSON.parse(readFileSync(path.join(goldenDir, "phase2.json"), "utf8")) as Record<string, string>;
+  const golden3 = JSON.parse(readFileSync(path.join(goldenDir, "phase3.json"), "utf8")) as Record<string, string>;
 
   // Bundle the deterministic scenarios into a browser IIFE.
   const built = await esbuild.build({
@@ -34,11 +35,16 @@ test("sim golden hashes are bit-identical in Chromium and Node", async ({ page }
   await page.addScriptTag({ content: js });
   const result = await page.evaluate(() => {
     const g = globalThis as unknown as {
-      Golden: { runCheckpoints(): Record<string, string>; runCheckpoints2(): Record<string, string> };
+      Golden: {
+        runCheckpoints(): Record<string, string>;
+        runCheckpoints2(): Record<string, string>;
+        runCheckpoints3(): Record<string, string>;
+      };
     };
-    return { one: g.Golden.runCheckpoints(), two: g.Golden.runCheckpoints2() };
+    return { one: g.Golden.runCheckpoints(), two: g.Golden.runCheckpoints2(), three: g.Golden.runCheckpoints3() };
   });
 
   expect(result.one).toEqual(golden1); // fire-only
   expect(result.two).toEqual(golden2); // units: extinguish/firebreak/refill/move
+  expect(result.three).toEqual(golden3); // procgen + warnings + units
 });

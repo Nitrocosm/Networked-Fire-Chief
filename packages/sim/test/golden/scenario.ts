@@ -8,10 +8,12 @@
 import {
   cellIndex,
   createInitialState,
+  createStateFromScenario,
   type Command,
   hashWorld,
   igniteCell,
   makeUnit,
+  type Scenario,
   Terrain,
   tick,
   type WindKeyframe,
@@ -104,6 +106,54 @@ export function buildScenario2(): WorldState {
   igniteCell(s, cellIndex(5, 5, W)); // under h1
   igniteCell(s, cellIndex(10, 10, W)); // free-spreading fire in the forest
   return s;
+}
+
+/**
+ * Phase-3 scenario: a procedurally-generated map driven by scripted warnings,
+ * god-mode ignites, and a cancel — plus units acting/moving. Locks the whole
+ * outbreak + procgen + units pipeline end to end.
+ */
+export function buildScenario3(): WorldState {
+  const W = 24;
+  const scenario: Scenario = {
+    seed: 2024,
+    mapSeed: 77,
+    config: { GRID_W: W, GRID_H: W, ROUND_LENGTH_SEC: 100_000, IGNITION_SCATTER_RADIUS: 2 },
+    windKeyframes: [{ atTick: 0, dirX: 1, dirY: 0, speed: 0.6 }],
+    events: [
+      { atTick: 5, type: "WARNING", id: "w1", center: cellIndex(12, 12, W), leadTime: 10 },
+      { atTick: 20, type: "IGNITE", cell: cellIndex(4, 4, W) },
+      { atTick: 40, type: "WARNING", id: "w2", center: cellIndex(18, 6, W) },
+      { atTick: 60, type: "CANCEL_WARNING", id: "w2" },
+    ],
+  };
+  const s = createStateFromScenario(scenario);
+  // Units placed for the golden (scenarios don't carry unit placement).
+  s.units.push(
+    makeUnit({ id: "h1", role: "HELI", operatorId: "op-h", cell: cellIndex(2, 2, W) }),
+    makeUnit({ id: "t1", role: "TRUCK", operatorId: "op-t", cell: cellIndex(5, 5, W) }),
+    makeUnit({ id: "d1", role: "DOZER", operatorId: "op-d", cell: cellIndex(8, 8, W) }),
+  );
+  return s;
+}
+
+export function runCheckpoints3(): Record<string, string> {
+  let s = buildScenario3();
+  const W = 24;
+  const schedule: Record<number, Command[]> = {
+    1: [
+      { type: "SET_WAYPOINT", unitId: "h1", target: cellIndex(12, 12, W) }, // head toward the w1 zone
+      { type: "SET_WAYPOINT", unitId: "t1", target: cellIndex(4, 4, W) },
+      { type: "ACT", unitId: "d1" }, // firebreak under the dozer
+    ],
+  };
+  const checkpoints = new Set<number>(CHECKPOINTS);
+  const out: Record<string, string> = {};
+  for (let t = 1; t <= MAX_TICK; t++) {
+    s = tick(s, schedule[t] ?? []);
+    if (checkpoints.has(t)) out[String(t)] = hashWorld(s);
+  }
+  return out;
 }
 
 export function runCheckpoints2(): Record<string, string> {

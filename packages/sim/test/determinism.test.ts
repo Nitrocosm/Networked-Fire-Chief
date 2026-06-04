@@ -1,9 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { cloneWorld, hashWorld } from "../src/index.ts";
 import { tick } from "../src/index.ts";
-import { buildScenario, buildScenario2, runCheckpoints, runCheckpoints2 } from "./golden/scenario.ts";
+import { buildScenario, buildScenario2, buildScenario3, runCheckpoints, runCheckpoints2, runCheckpoints3 } from "./golden/scenario.ts";
 import golden from "./golden/phase1.json" with { type: "json" };
 import golden2 from "./golden/phase2.json" with { type: "json" };
+import golden3 from "./golden/phase3.json" with { type: "json" };
 
 /**
  * PHASE 1 DETERMINISM GATES. These block progression to Phase 2.
@@ -44,6 +45,23 @@ describe("determinism gates", () => {
     let original = s;
     let resumed = cloneWorld(s);
     for (let i = 0; i < 60; i++) {
+      original = tick(original);
+      resumed = tick(resumed);
+    }
+    expect(hashWorld(resumed)).toBe(hashWorld(original));
+  });
+
+  it("matches the locked golden fixture for the procgen + warnings pipeline", () => {
+    expect(runCheckpoints3()).toEqual(golden3);
+  });
+
+  it("the procgen + warnings scenario is reproducible and survives a round-trip", () => {
+    expect(runCheckpoints3()).toEqual(runCheckpoints3());
+    let s = buildScenario3();
+    for (let i = 0; i < 70; i++) s = tick(s);
+    let original = s;
+    let resumed = cloneWorld(s);
+    for (let i = 0; i < 70; i++) {
       original = tick(original);
       resumed = tick(resumed);
     }
