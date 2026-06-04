@@ -145,3 +145,16 @@ export function getNeighborDirTable(
   }
   return table;
 }
+
+const idxGeometryCache = new Map<string, readonly (readonly number[])[]>();
+
+/** Memoized index-only neighbor table (for pathfinding). */
+export function getNeighborTable(width: number, height: number): readonly (readonly number[])[] {
+  const key = `${width}x${height}`;
+  let table = idxGeometryCache.get(key);
+  if (!table) {
+    table = buildNeighborTable(width, height);
+    idxGeometryCache.set(key, table);
+  }
+  return table;
+}
