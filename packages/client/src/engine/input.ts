@@ -8,7 +8,7 @@
  *   CANCEL_MOVE; otherwise ACT (engine decides extinguish/firebreak/nothing).
  * - Click on empty ground with a unit selected: SET_WAYPOINT there.
  */
-import type { Snapshot } from "@fire/protocol";
+import type { ClientView } from "@fire/protocol";
 import type { Camera } from "../render/camera.ts";
 import { unitWorldPos, worldToCell } from "../render/hexLayout.ts";
 import { sendCommand } from "./session.ts";
@@ -17,7 +17,7 @@ import { useUi } from "../state/store.ts";
 const CLICK_THRESHOLD_PX = 4;
 const UNIT_HIT_RADIUS = 0.6; // world units
 
-function unitAt(wx: number, wy: number, snap: Snapshot): string | null {
+function unitAt(wx: number, wy: number, snap: ClientView): string | null {
   let best: string | null = null;
   let bestD = UNIT_HIT_RADIUS * UNIT_HIT_RADIUS;
   for (const u of snap.units) {
@@ -43,7 +43,7 @@ export class GameInput {
   constructor(
     private readonly canvas: HTMLCanvasElement,
     private readonly camera: Camera,
-    private readonly getSnapshot: () => Snapshot | null,
+    private readonly getSnapshot: () => ClientView | null,
   ) {}
 
   private dpr(): number {

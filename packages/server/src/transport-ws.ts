@@ -77,7 +77,7 @@ export function startServer(port: number): { close: () => void } {
           const player = session.addPlayer(msg.name ?? "", true);
           c.session = session;
           c.token = player.token;
-          send(ws, { type: "JOINED", code: session.code, token: player.token, isHost: true });
+          send(ws, { type: "JOINED", code: session.code, token: player.token, playerId: player.id, isHost: true });
           broadcastLobby(session);
           break;
         }
@@ -91,7 +91,7 @@ export function startServer(port: number): { close: () => void } {
           if (!player) player = session.addPlayer(msg.name ?? "", false);
           c.session = session;
           c.token = player.token;
-          send(ws, { type: "JOINED", code: session.code, token: player.token, isHost: session.isHost(player.token) });
+          send(ws, { type: "JOINED", code: session.code, token: player.token, playerId: player.id, isHost: session.isHost(player.token) });
           if (session.started) welcome(c, session);
           broadcastLobby(session);
           break;

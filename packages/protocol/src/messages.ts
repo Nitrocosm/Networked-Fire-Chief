@@ -88,7 +88,7 @@ export type ClientMsg =
   | { type: "LEAVE" };
 
 export type ServerMsg =
-  | { type: "JOINED"; code: string; token: string; isHost: boolean }
+  | { type: "JOINED"; code: string; token: string; playerId: string; isHost: boolean }
   | { type: "ROOM_STATE"; lobby: LobbyState }
   | { type: "WELCOME"; role: Role | null; unitIds: string[]; ticksPerSec: number }
   | { type: "SNAPSHOT"; snap: WireSnapshot }

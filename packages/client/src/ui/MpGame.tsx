@@ -1,35 +1,24 @@
 import { useEffect, useRef } from "react";
-import { filterForRole, type ClientView, type Snapshot } from "@fire/protocol";
-import { createSinglePlayerGame, type GameOptions } from "../game/setup.ts";
-import { LocalTransport } from "../transport/local.ts";
-import { GameLoop } from "../engine/loop.ts";
-import { clearHolder, holder, pushSnapshot, resetHolder } from "../engine/holder.ts";
+import { clearHolder, holder } from "../engine/holder.ts";
 import { setCommandSink } from "../engine/session.ts";
+import { getNet, setNet } from "../engine/net.ts";
+import { NetLoop } from "../engine/loop.ts";
 import { useUi } from "../state/store.ts";
 import { Camera } from "../render/camera.ts";
 import { CanvasRenderer } from "../render/renderer.ts";
 import { GameInput } from "../engine/input.ts";
 import { Hud } from "./Hud.tsx";
 
-/** Single-player: filter the full snapshot by the active mode/role at push time. */
-function projectForView(full: Snapshot): ClientView {
-  const { mode, activeRole } = useUi.getState();
-  return mode === "CHALLENGE" ? filterForRole(full, activeRole) : full;
-}
-
-export function Game({ options }: { options: GameOptions }) {
+/** Multiplayer view: render server snapshots (already role-filtered); no local sim. */
+export function MpGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const exitToMenu = useUi((s) => s.exitToMenu);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const state = createSinglePlayerGame(options);
-    const { GRID_W: width, GRID_H: height, TICKS_PER_SEC: tps } = state.config;
-    const transport = new LocalTransport(state);
-    setCommandSink(transport);
-    resetHolder(projectForView(transport.snapshot()));
+    const net = getNet();
+    if (!canvas || !net) return;
+    setCommandSink(net);
 
     const renderer = new CanvasRenderer(canvas);
     const camera = new Camera();
@@ -39,10 +28,7 @@ export function Game({ options }: { options: GameOptions }) {
       const rect = canvas.getBoundingClientRect();
       canvas.width = Math.max(1, Math.round(rect.width * dpr));
       canvas.height = Math.max(1, Math.round(rect.height * dpr));
-      if (!fitted) {
-        camera.fit(width, height, 1, canvas.width, canvas.height);
-        fitted = true;
-      }
+      fitted = false; // refit on resize using the latest snapshot dims
     };
     resize();
     window.addEventListener("resize", resize);
@@ -50,13 +36,16 @@ export function Game({ options }: { options: GameOptions }) {
     const input = new GameInput(canvas, camera, () => holder.current);
     const detachInput = input.attach();
 
-    const loop = new GameLoop(
-      transport,
-      tps,
-      (full) => pushSnapshot(projectForView(full)),
+    const loop = new NetLoop(
+      () => 1000 / net.ticksPerSec,
+      () => net.lastSnapshotMs,
       (alpha) => {
         const cur = holder.current;
         if (!cur) return;
+        if (!fitted) {
+          camera.fit(cur.width, cur.height, 1, canvas.width, canvas.height);
+          fitted = true;
+        }
         const { selectedUnitId, hoverCell } = useUi.getState();
         renderer.draw(cur, holder.previous ?? cur, alpha, camera, { selectedUnitId, hoverCell });
       },
@@ -68,14 +57,16 @@ export function Game({ options }: { options: GameOptions }) {
       detachInput();
       window.removeEventListener("resize", resize);
       setCommandSink(null);
+      net.close();
+      setNet(null);
       clearHolder();
     };
-  }, [options]);
+  }, []);
 
   return (
     <div className="app">
       <canvas ref={canvasRef} className="game-canvas" />
-      <button className="exit-btn" onClick={exitToMenu}>← Menu</button>
+      <button className="exit-btn" onClick={exitToMenu}>← Leave</button>
       <Hud />
     </div>
   );

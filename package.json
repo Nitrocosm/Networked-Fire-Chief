@@ -15,6 +15,8 @@
     "lint": "eslint . && pnpm run lint:deps",
     "lint:deps": "depcruise packages --config .dependency-cruiser.cjs",
     "test:crossengine": "playwright test",
+    "dev:client": "pnpm --filter @fire/client dev",
+    "dev:server": "pnpm --filter @fire/server dev",
     "check": "pnpm run typecheck && pnpm run lint && pnpm run test"
   },
   "devDependencies": {

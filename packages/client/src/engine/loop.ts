@@ -1,14 +1,14 @@
 /**
- * Fixed-timestep game loop, independent of render FPS.
+ * Loops, independent of render FPS.
  *
- * A rAF-driven accumulator advances the sim a fixed number of times per real
- * second (TICKS_PER_SEC). The leftover accumulator fraction (`alpha`) is handed
- * to the renderer for interpolation. Long frames (tab switch, GC) are clamped
- * and the backlog dropped — no spiral-of-death, and we never extrapolate past
- * the latest tick.
+ * GameLoop (single-player): a fixed-timestep accumulator advances the local sim
+ * and hands each full snapshot to `onTick` (caller pushes the filtered view).
+ * Long frames are clamped and backlog dropped — no spiral-of-death, no extrapolation.
+ *
+ * NetLoop (multiplayer): render-only. The server pushes snapshots; this just
+ * interpolates between the last two received, using wall-clock since arrival.
  */
-import { pushSnapshot } from "./holder.ts";
-import type { LocalTransport } from "../transport/local.ts";
+import type { Snapshot } from "@fire/protocol";
 
 const MAX_STEPS_PER_FRAME = 5;
 const MAX_FRAME_MS = 250;
@@ -21,8 +21,9 @@ export class GameLoop {
   private readonly tickMs: number;
 
   constructor(
-    private readonly transport: LocalTransport,
+    private readonly transport: { step(): Snapshot },
     ticksPerSec: number,
+    private readonly onTick: (full: Snapshot) => void,
     private readonly onFrame: (alpha: number) => void,
   ) {
     this.tickMs = 1000 / ticksPerSec;
@@ -46,7 +47,6 @@ export class GameLoop {
       this.raf = requestAnimationFrame(this.frame);
       return;
     }
-
     let dt = now - this.last;
     this.last = now;
     if (dt > MAX_FRAME_MS) dt = MAX_FRAME_MS;
@@ -54,13 +54,42 @@ export class GameLoop {
 
     let steps = 0;
     while (this.acc >= this.tickMs && steps < MAX_STEPS_PER_FRAME) {
-      pushSnapshot(this.transport.step());
+      this.onTick(this.transport.step());
       this.acc -= this.tickMs;
       steps++;
     }
-    if (steps === MAX_STEPS_PER_FRAME) this.acc = 0; // drop backlog
+    if (steps === MAX_STEPS_PER_FRAME) this.acc = 0;
 
-    this.onFrame(Math.min(this.acc / this.tickMs, 1)); // alpha ∈ [0,1], never extrapolate
+    this.onFrame(Math.min(this.acc / this.tickMs, 1));
+    this.raf = requestAnimationFrame(this.frame);
+  };
+}
+
+export class NetLoop {
+  private raf = 0;
+  private running = false;
+
+  constructor(
+    private readonly tickMs: () => number,
+    private readonly lastSnapshotMs: () => number,
+    private readonly onFrame: (alpha: number) => void,
+  ) {}
+
+  start(): void {
+    this.running = true;
+    this.raf = requestAnimationFrame(this.frame);
+  }
+
+  stop(): void {
+    this.running = false;
+    cancelAnimationFrame(this.raf);
+  }
+
+  private frame = (now: number): void => {
+    if (!this.running) return;
+    const tm = this.tickMs();
+    const alpha = tm > 0 ? Math.min(Math.max((now - this.lastSnapshotMs()) / tm, 0), 1) : 0;
+    this.onFrame(alpha);
     this.raf = requestAnimationFrame(this.frame);
   };
 }

@@ -1,16 +1,20 @@
 /**
- * Active game session — a singleton the input handlers and HUD use to send
- * commands without prop-drilling the transport through React.
+ * Active command sink — a singleton the input handlers and HUD use to send
+ * commands without prop-drilling. Set to the local transport (single-player) or
+ * the net client (multiplayer); both implement `send`.
  */
 import type { Command } from "@fire/sim";
-import type { LocalTransport } from "../transport/local.ts";
 
-const ref: { transport: LocalTransport | null } = { transport: null };
+export interface CommandSink {
+  send(cmd: Command): void;
+}
 
-export function setSessionTransport(t: LocalTransport | null): void {
-  ref.transport = t;
+const ref: { sink: CommandSink | null } = { sink: null };
+
+export function setCommandSink(sink: CommandSink | null): void {
+  ref.sink = sink;
 }
 
 export function sendCommand(cmd: Command): void {
-  ref.transport?.send(cmd);
+  ref.sink?.send(cmd);
 }

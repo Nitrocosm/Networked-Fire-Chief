@@ -1,4 +1,4 @@
-import { filterForRole, ROLES, type ClientView, type UnitView, type WindView } from "@fire/protocol";
+import { ROLES, type UnitView } from "@fire/protocol";
 import { holder } from "../engine/holder.ts";
 import { sendCommand } from "../engine/session.ts";
 import { useUi } from "../state/store.ts";
@@ -16,7 +16,7 @@ function fmtClock(totalSec: number): string {
 }
 
 function windDeg(dx: number, dy: number): number {
-  return (Math.atan2(dx, -dy) * 180) / Math.PI; // 0° = up/north
+  return (Math.atan2(dx, -dy) * 180) / Math.PI;
 }
 
 function unitStatus(u: UnitView): string {
@@ -36,36 +36,42 @@ function Bars({ water, fuel }: { water: number; fuel: number }) {
 
 export function Hud() {
   useFrame(10);
-  const { mode, activeRole, selectedUnitId, hoverCell, setMode, setActiveRole, selectUnit } = useUi();
-  const snap = holder.current;
-  if (!snap) return null;
+  const { mode, activeRole, selectedUnitId, hoverCell, multiplayer, myRole, setMode, setActiveRole, selectUnit } = useUi();
+  const view = holder.current;
+  if (!view) return null;
 
-  const view: ClientView = mode === "CHALLENGE" ? filterForRole(snap, activeRole) : snap;
-  const remaining = (snap.endTick - snap.tick) / snap.ticksPerSec;
-  const roster = snap.units.filter((u) => u.role === activeRole);
-  const selected = snap.units.find((u) => u.id === selectedUnitId) ?? null;
-  const wind: WindView | null = view.wind;
+  const role = multiplayer ? myRole ?? activeRole : activeRole;
+  const remaining = (view.endTick - view.tick) / view.ticksPerSec;
+  const roster = view.units.filter((u) => u.role === role);
+  const selected = view.units.find((u) => u.id === selectedUnitId) ?? null;
+  const wind = view.wind;
 
   return (
     <div className="hud">
-      {/* Top-left: score/time + controls (clear of the map's top-center) */}
+      {/* Top-left: score/time + controls */}
       <div className="panel-tl">
         <div className="card score-card">
-          <div className="stat"><label>SCORE</label><span className="score">{snap.score.toLocaleString()}</span></div>
+          <div className="stat"><label>SCORE</label><span className="score">{view.score.toLocaleString()}</span></div>
           <div className="stat"><label>TIME</label><span className={remaining < 30 ? "time low" : "time"}>{fmtClock(remaining)}</span></div>
         </div>
-        {snap.status === "ENDED" && <div className="card ended">ROUND OVER</div>}
-        <div className="modes">
-          <button className={mode === "CASUAL" ? "on" : ""} onClick={() => setMode("CASUAL")}>Casual</button>
-          <button className={mode === "CHALLENGE" ? "on" : ""} onClick={() => setMode("CHALLENGE")}>Challenge</button>
-        </div>
-        <div className="roles">
-          {ROLES.map((r) => (
-            <button key={r} className={r === activeRole ? "on" : ""} onClick={() => setActiveRole(r)}>
-              {ROLE_LABEL[r]}
-            </button>
-          ))}
-        </div>
+        {view.status === "ENDED" && <div className="card ended">ROUND OVER</div>}
+        {multiplayer ? (
+          <div className="card">YOU: {role ? ROLE_LABEL[role] : "spectator"}</div>
+        ) : (
+          <>
+            <div className="modes">
+              <button className={mode === "CASUAL" ? "on" : ""} onClick={() => setMode("CASUAL")}>Casual</button>
+              <button className={mode === "CHALLENGE" ? "on" : ""} onClick={() => setMode("CHALLENGE")}>Challenge</button>
+            </div>
+            <div className="roles">
+              {ROLES.map((r) => (
+                <button key={r} className={r === activeRole ? "on" : ""} onClick={() => setActiveRole(r)}>
+                  {ROLE_LABEL[r]}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Top-right: wind + warnings (role-gated) */}
@@ -79,27 +85,24 @@ export function Hud() {
             </div>
             <div className="forecast">
               forecast <span className="arrow sm" style={{ transform: `rotate(${windDeg(wind.forecastDirX, wind.forecastDirY)}deg)` }}>▲</span>
-              {" @ "}{fmtClock(wind.forecastEtaTick / snap.ticksPerSec)}
+              {" @ "}{fmtClock(wind.forecastEtaTick / view.ticksPerSec)}
             </div>
           </div>
         ) : (
-          <div className="card muted">Wind: hidden for {ROLE_LABEL[activeRole]}</div>
+          <div className="card muted">Wind: hidden for {ROLE_LABEL[role ?? "DOZER"]}</div>
         )}
         {view.warnings ? (
-          <div className="card">
-            <label>WARNINGS</label>
-            <span className="big">{view.warnings.length}</span>
-          </div>
+          <div className="card"><label>WARNINGS</label><span className="big">{view.warnings.length}</span></div>
         ) : (
-          <div className="card muted">Warnings: hidden for {ROLE_LABEL[activeRole]}</div>
+          <div className="card muted">Warnings: hidden for {ROLE_LABEL[role ?? "HELI"]}</div>
         )}
       </div>
 
       {/* Bottom-right: hover info */}
-      {hoverCell !== null && (
+      {hoverCell !== null && hoverCell < view.width * view.height && (
         <div className="panel-br card">
-          <div>({hoverCell % snap.width}, {Math.floor(hoverCell / snap.width)})</div>
-          <div className="muted">{TERRAIN_NAME[snap.terrain[hoverCell]!] ?? "?"}</div>
+          <div>({hoverCell % view.width}, {Math.floor(hoverCell / view.width)})</div>
+          <div className="muted">{TERRAIN_NAME[view.terrain[hoverCell]!] ?? "?"}</div>
         </div>
       )}
 
@@ -118,7 +121,7 @@ export function Hud() {
           <div className="card selected">
             <label>{ROLE_LABEL[selected.role]} — {selected.id}</label>
             <div className="kv">water <b>{Math.round(selected.water * 100)}%</b> · fuel <b>{Math.round(selected.fuel * 100)}%</b></div>
-            <div className="kv muted">{unitStatus(selected)} · cell ({selected.cell % snap.width}, {Math.floor(selected.cell / snap.width)})</div>
+            <div className="kv muted">{unitStatus(selected)} · cell ({selected.cell % view.width}, {Math.floor(selected.cell / view.width)})</div>
             {selected.destination !== null && (
               <button className="cancel" onClick={() => sendCommand({ type: "CANCEL_MOVE", unitId: selected.id })}>Stop</button>
             )}
