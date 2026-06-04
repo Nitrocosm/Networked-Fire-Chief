@@ -16,6 +16,13 @@ import { Rng } from "./rng/rng.ts";
 import { resolveWind } from "./wind/wind.ts";
 import { cloneUnit, sortCommands, type Command } from "./units/units.ts";
 import { applyMovementCommands, resolveMovement } from "./units/movement.ts";
+import {
+  applyCompletionEffects,
+  regenSources,
+  resolveRefill,
+  startActions,
+  stepActions,
+} from "./units/actions.ts";
 import type { RunStatus, WorldState } from "./state.ts";
 
 export function tick(state: WorldState, commands: readonly Command[] = []): WorldState {
@@ -25,18 +32,26 @@ export function tick(state: WorldState, commands: readonly Command[] = []): Worl
   const { width, height, config } = state;
   const cellCount = width * height;
 
-  // Units are deep-copied up front so the rest of the tick can mutate freely
-  // while the input WorldState stays untouched (purity).
+  // Copy-on-tick everything the step may mutate, so the input stays untouched
+  // (purity). terrain mutates on firebreak; sourceLevel on refill.
   const units = state.units.map(cloneUnit);
+  const terrain = state.terrain.slice();
+  const sourceLevel = state.sourceLevel.slice();
 
-  // 1. Apply commands (canonical order) — movement here; ACT/actions next commit.
   const sorted = sortCommands(commands);
-  applyMovementCommands(units, width, height, sorted);
 
-  // 2. Resolve unit movement (no-stacking).
+  // 1. Apply commands (canonical order): movement, then actions (ACT).
+  applyMovementCommands(units, width, height, sorted);
+  startActions(units, terrain, state.fire, sorted, config);
+
+  // 2. Resolve unit movement (no-stacking). Busy (acting) units don't move.
   resolveMovement(units, config);
 
-  // 3. Resolve unit actions (extinguish/firebreak/refill) — next commit.
+  // 3a. Advance actions: derive suppression (pauses spread + timer), collect
+  //     completions, then auto-refill stationary units.
+  const { suppressed, completions } = stepActions(units, cellCount);
+  resolveRefill(units, terrain, sourceLevel, config);
+  regenSources(terrain, sourceLevel, config);
 
   // 4. Spread fire + advance burn timers + process burnouts (deduct score).
   const neighbors = getNeighborDirTable(width, height);
@@ -47,7 +62,10 @@ export function tick(state: WorldState, commands: readonly Command[] = []): Worl
     burnTimer: new Int32Array(cellCount),
     immune: new Int32Array(cellCount),
   };
-  const scoreLost = stepFire(state.terrain, prev, state.suppressed, neighbors, state.wind, config, rng, next);
+  const scoreLost = stepFire(terrain, prev, suppressed, neighbors, state.wind, config, rng, next);
+
+  // 3b. Apply completed-action effects to the post-spread buffers / terrain.
+  applyCompletionEffects(completions, next, terrain, config);
 
   const newTick = state.tick + 1;
   let newScore = state.score - scoreLost;
@@ -66,7 +84,7 @@ export function tick(state: WorldState, commands: readonly Command[] = []): Worl
     for (let i = 0; i < cellCount; i++) {
       const f = next.fire[i]!;
       if (f === Fire.BURNING || f === Fire.IGNITING) {
-        newScore -= lossValue(state.terrain[i]!, config);
+        newScore -= lossValue(terrain[i]!, config);
       }
     }
   }
@@ -74,9 +92,12 @@ export function tick(state: WorldState, commands: readonly Command[] = []): Worl
   return {
     ...state,
     tick: newTick,
+    terrain,
     fire: next.fire,
     burnTimer: next.burnTimer,
     immune: next.immune,
+    suppressed,
+    sourceLevel,
     units,
     wind: newWind,
     score: newScore,

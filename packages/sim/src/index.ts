@@ -9,5 +9,6 @@ export * from "./fire/fire.ts";
 export * from "./units/units.ts";
 export * from "./units/pathfinding.ts";
 export * from "./units/movement.ts";
+export * from "./units/actions.ts";
 export * from "./state.ts";
 export * from "./tick.ts";

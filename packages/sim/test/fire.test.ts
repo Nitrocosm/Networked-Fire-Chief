@@ -1,7 +1,9 @@
 import { describe, it, expect } from "vitest";
-import type { Config } from "../src/config.ts";
+import { makeConfig, type Config } from "../src/config.ts";
 import { cellIndex, getNeighborDirTable } from "../src/hex/hex.ts";
-import { Fire, Terrain } from "../src/fire/fire.ts";
+import { burnDurationTicks, Fire, type FireBuffers, stepFire, Terrain } from "../src/fire/fire.ts";
+import { Rng } from "../src/rng/rng.ts";
+import { resolveWind } from "../src/wind/wind.ts";
 import { createInitialState, igniteCell, type InitOptions, type WorldState } from "../src/state.ts";
 import { tick } from "../src/tick.ts";
 import type { WindKeyframe } from "../src/wind/wind.ts";
@@ -113,21 +115,37 @@ describe("fire lifecycle", () => {
     expect(s.fire[nb]).toBe(Fire.UNBURNT); // never caught while immune
   });
 
-  it("a suppressed burning cell pauses its timer and does not spread", () => {
+  it("a suppressed burning cell pauses its timer and does not spread (CA level)", () => {
     const W = 5;
-    const terrain = inertBoard(W, W);
+    const H = 5;
+    const terrain = inertBoard(W, H);
     const center = cellIndex(2, 2, W);
-    const nb = getNeighborDirTable(W, W)[center]![0]!.idx;
+    const nb = getNeighborDirTable(W, H)[center]![0]!.idx;
     terrain[center] = Terrain.GRASSLAND;
     terrain[nb] = Terrain.GRASSLAND;
-    let s = makeState(terrain, { FIRE_P0: 100 });
-    igniteCell(s, center);
-    s.suppressed[center] = 1;
-    const timerBefore = s.burnTimer[center]!;
-    s = run(s, 50);
-    expect(s.fire[center]).toBe(Fire.BURNING); // still burning (timer paused)
-    expect(s.burnTimer[center]).toBe(timerBefore); // not decremented
-    expect(s.fire[nb]).toBe(Fire.UNBURNT); // suppressed cell does not spread
+
+    const cfg = makeConfig({ GRID_W: W, GRID_H: H, FIRE_P0: 100 });
+    const neighbors = getNeighborDirTable(W, H);
+    const wind = resolveWind([], 0);
+    const rng = new Rng(1);
+    const n = W * H;
+    const burnDur = burnDurationTicks(Terrain.GRASSLAND, cfg);
+
+    let buf: FireBuffers = { fire: new Uint8Array(n), burnTimer: new Int32Array(n), immune: new Int32Array(n) };
+    buf.fire[center] = Fire.BURNING;
+    buf.burnTimer[center] = burnDur;
+
+    const suppressed = new Uint8Array(n);
+    suppressed[center] = 1; // pretend a unit is extinguishing it
+
+    for (let i = 0; i < 10; i++) {
+      const next: FireBuffers = { fire: new Uint8Array(n), burnTimer: new Int32Array(n), immune: new Int32Array(n) };
+      stepFire(terrain, buf, suppressed, neighbors, wind, cfg, rng, next);
+      buf = next;
+    }
+    expect(buf.fire[center]).toBe(Fire.BURNING); // still burning — timer paused
+    expect(buf.burnTimer[center]).toBe(burnDur); // never decremented
+    expect(buf.fire[nb]).toBe(Fire.UNBURNT); // suppressed cell does not spread
   });
 });
 

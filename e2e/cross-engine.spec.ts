@@ -5,8 +5,8 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const goldenPath = path.resolve(here, "../packages/sim/test/golden/phase1.json");
-const scenarioPath = path.resolve(here, "../packages/sim/test/golden/scenario.ts");
+const goldenDir = path.resolve(here, "../packages/sim/test/golden");
+const scenarioPath = path.resolve(goldenDir, "scenario.ts");
 
 /**
  * THE cross-engine determinism gate. The sim avoids engine-unstable transcendentals
@@ -15,9 +15,10 @@ const scenarioPath = path.resolve(here, "../packages/sim/test/golden/scenario.ts
  * float/encoding difference has crept in — multiplayer desync waiting to happen.
  */
 test("sim golden hashes are bit-identical in Chromium and Node", async ({ page }) => {
-  const golden = JSON.parse(readFileSync(goldenPath, "utf8")) as Record<string, string>;
+  const golden1 = JSON.parse(readFileSync(path.join(goldenDir, "phase1.json"), "utf8")) as Record<string, string>;
+  const golden2 = JSON.parse(readFileSync(path.join(goldenDir, "phase2.json"), "utf8")) as Record<string, string>;
 
-  // Bundle the deterministic scenario into a browser IIFE.
+  // Bundle the deterministic scenarios into a browser IIFE.
   const built = await esbuild.build({
     entryPoints: [scenarioPath],
     bundle: true,
@@ -31,9 +32,13 @@ test("sim golden hashes are bit-identical in Chromium and Node", async ({ page }
 
   await page.setContent("<!doctype html><html><body></body></html>");
   await page.addScriptTag({ content: js });
-  const browserHashes = await page.evaluate(() => {
-    return (globalThis as unknown as { Golden: { runCheckpoints(): Record<string, string> } }).Golden.runCheckpoints();
+  const result = await page.evaluate(() => {
+    const g = globalThis as unknown as {
+      Golden: { runCheckpoints(): Record<string, string>; runCheckpoints2(): Record<string, string> };
+    };
+    return { one: g.Golden.runCheckpoints(), two: g.Golden.runCheckpoints2() };
   });
 
-  expect(browserHashes).toEqual(golden);
+  expect(result.one).toEqual(golden1); // fire-only
+  expect(result.two).toEqual(golden2); // units: extinguish/firebreak/refill/move
 });
